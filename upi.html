@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Waste Sorter</title>
+
+  <!-- CSS Styling -->
+  <style>
+    body {
+      text-align: center;
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      padding-top: 30px;
+    }
+
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 20px;
+    }
+
+    video {
+      border: 3px solid #2c3e50;
+      border-radius: 10px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #219150;
+    }
+
+    #result {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h1>Smart Waste Sorter</h1>
+
+  <video id="webcam" autoplay playsinline width="300" height="225"></video>
+  <br>
+  <button id="capture">Classify</button>
+
+  <div id="result">Waiting for classification...</div>
+
+  <!-- TensorFlow.js and MobileNet -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet"></script>
+
+  <!-- JavaScript -->
+  <script>
+    const video = document.getElementById('webcam');
+    const resultDiv = document.getElementById('result');
+    const captureBtn = document.getElementById('capture');
+    let model;
+
+    // Load MobileNet model
+    async function loadModel() {
+      model = await mobilenet.load();
+      console.log("✅ MobileNet model loaded.");
+    }
+    loadModel();
+
+    // Start webcam
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      } catch (err) {
+        alert("Camera access denied or not supported.");
+      }
+    }
+    startCamera();
+
+    // Classify on button click
+    captureBtn.onclick = async () => {
+      if (!model) {
+        alert("Model not loaded yet. Please wait...");
+        return;
+      }
+
+      const predictions = await model.classify(video);
+      const top = predictions[0];
+
+      // Categorize based on label
+      let binType;
+      const label = top.className.toLowerCase();
+
+      if (label.includes("banana") || label.includes("apple") || label.includes("vegetable") || label.includes("food")) {
+        binType = "Organic Waste 🥦";
+      } else if (label.includes("bottle") || label.includes("plastic") || label.includes("can") || label.includes("paper") || label.includes("cup")) {
+        binType = "Recyclable Waste ♻️";
+      } else {
+        binType = "Other Waste ⚠️";
+      }
+
+      resultDiv.innerHTML = `
+        <p>Prediction: <strong>${top.className}</strong></p>
+        <p>Confidence: ${(top.probability * 100).toFixed(2)}%</p>
+        <p>Suggested Bin: <strong>${binType}</strong></p>
+      `;
+
+      // Speak result
+      const speech = new SpeechSynthesisUtterance(`This item goes into ${binType}`);
+      window.speechSynthesis.speak(speech);
+    };
+  </script>
+</body>
+</html>
